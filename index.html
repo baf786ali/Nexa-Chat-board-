@@ -3,38 +3,422 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXA - Universal AI Chat</title>
+    <title>NEXA | Universal AI Node</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        sci: ['Orbitron', 'sans-serif'],
+                    },
+                    colors: {
+                        nexa: {
+                            dark: '#050505',
+                            panel: '#0a0a0f',
+                            accent: '#00f3ff', // Cyan Neon
+                            purple: '#bd00ff', // Purple Neon
+                            glass: 'rgba(20, 20, 30, 0.7)'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px #00f3ff' },
+                            '100%': { boxShadow: '0 0 20px #00f3ff, 0 0 10px #bd00ff' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-            font-family: 'Poppins', sans-serif; 
+        body {
+            background-color: #000;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(189, 0, 255, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(0, 243, 255, 0.1) 0%, transparent 20%);
+            color: #e0e0e0;
+            overflow: hidden; /* Prevent body scroll */
         }
         
-        body { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            min-height: 100vh;
-            overflow-x: hidden;
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0a0a0f; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
+
+        .glass-panel {
+            background: var(--nexa-glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        
-        .glass {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+
+        .message-bubble {
+            max-width: 85%;
+            animation: fadeIn 0.3s ease-out;
         }
-        
-        .glow {
-            box-shadow: 0 0 20px rgba(102, 126, 234, 0.6);
+
+        .user-msg {
+            background: linear-gradient(135deg, #004d40 0%, #00695c 100%);
+            border-bottom-right-radius: 2px;
         }
+
+        .ai-msg {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 2px solid #00f3ff;
+            border-bottom-left-radius: 2px;
+        }
+
+        /* Typing cursor */
+        .typing-cursor::after {
+            content: '▋';
+            animation: blink 1s step-start infinite;
+            color: #00f3ff;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                z-index: 50;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                width: 80%;
+                height: 100%;
+            }
+            .sidebar.open { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex text-sm md:text-base">
+
+    <div id="settingsModal" class="fixed inset-0 z-[60] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center">
+        <div class="glass-panel w-11/12 max-w-lg p-6 rounded-2xl shadow-[0_0_50px_rgba(0,243,255,0.1)] relative">
+            <h2 class="text-xl font-sci text-nexa-accent mb-4 tracking-widest"><i class="fa-solid fa-gear"></i> SYSTEM CONFIG</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 mb-1 text-xs">OPENROUTER API KEY (Required)</label>
+                    <input type="password" id="apiKeyInput" placeholder="sk-or-..." class="w-full bg-black/50 border border-gray-700 rounded p-2 text-white focus:border-nexa-accent focus:outline-none transition-colors">
+                    <p class="text-[10px] text-gray-500 mt-1">Keys are stored locally in your browser.</p>
+                </div>
+
+                <div>
+                    <label class="block text-gray-400 mb-1 text-xs">PREFERRED MODEL</label>
+                    <select id="modelSelect" class="w-full bg-black/50 border border-gray-700 rounded p-2 text-white focus:border-nexa-accent outline-none">
+                        <option value="google/gemini-2.0-flash-001">Google Gemini 2.0 Flash (Fastest)</option>
+                        <option value="google/gemini-pro-1.5">Google Gemini 1.5 Pro</option>
+                        <option value="openai/gpt-4o">OpenAI GPT-4o</option>
+                        <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                        <option value="deepseek/deepseek-r1">DeepSeek R1</option>
+                        <option value="auto">Auto (Smart Router)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-gray-400 mb-1 text-xs">COMMUNICATION LANGUAGE</label>
+                    <select id="languageSelect" class="w-full bg-black/50 border border-gray-700 rounded p-2 text-white focus:border-nexa-accent outline-none">
+                        <option value="English">English (Default)</option>
+                        <option value="Urdu">Urdu (اردو)</option>
+                        <option value="Roman Urdu">Roman Urdu</option>
+                        <option value="Hindi">Hindi</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-gray-400 mb-1 text-xs">SYSTEM PERSONA</label>
+                    <input type="text" id="sysPromptInput" value="You are NEXA, a futuristic AI assistant. Be concise, intelligent, and helpful." class="w-full bg-black/50 border border-gray-700 rounded p-2 text-white focus:border-nexa-accent outline-none">
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button onclick="toggleSettings()" class="px-4 py-2 rounded border border-gray-600 hover:bg-gray-800 transition">Cancel</button>
+                <button onclick="saveSettings()" class="px-6 py-2 rounded bg-gradient-to-r from-nexa-accent to-blue-600 text-black font-bold hover:shadow-[0_0_15px_rgba(0,243,255,0.4)] transition">INITIALIZE</button>
+            </div>
+        </div>
+    </div>
+
+    <aside id="sidebar" class="sidebar glass-panel w-64 flex flex-col border-r border-gray-800 bg-black h-full flex-shrink-0">
+        <div class="p-4 border-b border-gray-800 flex items-center justify-between">
+            <h1 class="font-sci text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-nexa-accent to-nexa-purple">NEXA</h1>
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-400"><i class="fa-solid fa-xmark"></i></button>
+        </div>
         
-        .chat-message {
-            animation: slideUp 0.3s ease-out;
+        <div class="p-3">
+            <button onclick="startNewChat()" class="w-full py-3 rounded border border-nexa-accent/30 text-nexa-accent hover:bg-nexa-accent/10 transition flex items-center justify-center gap-2 font-sci tracking-wider">
+                <i class="fa-solid fa-plus"></i> NEW PROTOCOL
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-2 space-y-2" id="historyList">
+            </div>
+
+        <div class="p-4 border-t border-gray-800 text-center text-xs text-gray-500 font-mono">
+            V 3.0.1 | SYSTEM ONLINE
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full relative">
+        
+        <header class="h-16 glass-panel border-b border-gray-800 flex items-center justify-between px-4 z-10">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white"><i class="fa-solid fa-bars"></i></button>
+                <div class="flex flex-col">
+                    <span class="font-sci text-lg text-white tracking-wide">NEXA LIVE</span>
+                    <span id="currentModelDisplay" class="text-[10px] text-nexa-accent font-mono uppercase">Initializing...</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="clearChat()" class="text-gray-400 hover:text-red-500 transition" title="Wipe Memory"><i class="fa-solid fa-trash-can"></i></button>
+                <button onclick="toggleSettings()" class="text-gray-400 hover:text-white transition animate-pulse-slow"><i class="fa-solid fa-gear fa-lg"></i></button>
+            </div>
+        </header>
+
+        <div id="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth pb-32">
+            <div class="flex gap-4 max-w-3xl mx-auto mt-10 opacity-80">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-nexa-accent to-nexa-purple flex items-center justify-center shadow-[0_0_15px_rgba(189,0,255,0.5)]">
+                    <i class="fa-solid fa-robot text-black"></i>
+                </div>
+                <div class="space-y-2">
+                    <div class="font-sci text-nexa-accent text-sm">NEXA OS</div>
+                    <div class="text-gray-300">
+                        Greetings. I am NEXA. How may I assist your operations today? <br>
+                        <span class="text-xs text-gray-500 mt-2 block">Configure your API Key in settings to begin. I support Multilingual Output (Urdu, English, etc.) and Voice Synthesis.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-0 w-full p-4 bg-gradient-to-t from-black via-black to-transparent z-20">
+            <div class="max-w-3xl mx-auto relative glass-panel rounded-2xl p-1 flex items-end shadow-[0_0_20px_rgba(0,243,255,0.05)] border border-nexa-accent/30 focus-within:shadow-[0_0_20px_rgba(0,243,255,0.2)] transition-shadow">
+                
+                <button id="micBtn" onclick="toggleVoiceInput()" class="h-12 w-12 rounded-xl text-gray-400 hover:text-nexa-accent hover:bg-white/5 transition flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-microphone"></i>
+                </button>
+
+                <textarea id="userInput" rows="1" class="w-full bg-transparent text-white border-0 focus:ring-0 p-3 max-h-32 resize-none overflow-y-auto" placeholder="Enter command or query..." style="min-height: 48px;"></textarea>
+                
+                <button onclick="sendMessage()" id="sendBtn" class="h-12 w-12 rounded-xl text-nexa-dark bg-nexa-accent hover:bg-white transition flex items-center justify-center flex-shrink-0 mb-[1px] mr-[1px] shadow-[0_0_10px_rgba(0,243,255,0.5)]">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="text-center mt-2">
+                <p class="text-[10px] text-gray-600 font-mono">NEXA uses AI. Verify critical information.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- CONFIGURATION & STATE ---
+        const CONFIG = {
+            storageKey: 'nexa_data_v1',
+            apiKey: '',
+            model: 'google/gemini-2.0-flash-001',
+            language: 'English',
+            systemPrompt: 'You are NEXA.',
+            chats: []
+        };
+        
+        let currentChatId = null;
+        let isProcessing = false;
+        let recognition = null; // Speech Recognition
+
+        // --- INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            renderHistory();
+            
+            // Auto-resize textarea
+            const ta = document.getElementById('userInput');
+            ta.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+            ta.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // Initialize Speech Recognition
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('userInput').value += transcript + ' ';
+                    document.getElementById('micBtn').classList.remove('text-red-500', 'animate-pulse');
+                    document.getElementById('userInput').focus();
+                };
+
+                recognition.onerror = () => {
+                     document.getElementById('micBtn').classList.remove('text-red-500', 'animate-pulse');
+                }
+                
+                recognition.onend = () => {
+                     document.getElementById('micBtn').classList.remove('text-red-500', 'animate-pulse');
+                }
+            }
+            
+            // Open settings if no API Key
+            if(!CONFIG.apiKey) toggleSettings();
+        });
+
+        // --- UI FUNCTIONS ---
+        function toggleSettings() {
+            const modal = document.getElementById('settingsModal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                document.getElementById('apiKeyInput').value = CONFIG.apiKey || '';
+                document.getElementById('modelSelect').value = CONFIG.model;
+                document.getElementById('languageSelect').value = CONFIG.language;
+                document.getElementById('sysPromptInput').value = CONFIG.systemPrompt;
+            }
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        function saveSettings() {
+            CONFIG.apiKey = document.getElementById('apiKeyInput').value.trim();
+            CONFIG.model = document.getElementById('modelSelect').value;
+            CONFIG.language = document.getElementById('languageSelect').value;
+            CONFIG.systemPrompt = document.getElementById('sysPromptInput').value;
+            saveData();
+            updateModelDisplay();
+            toggleSettings();
+            alert("System Re-calibrated.");
+        }
+
+        function updateModelDisplay() {
+            document.getElementById('currentModelDisplay').innerText = `MODULE: ${CONFIG.model} | LANG: ${CONFIG.language}`;
+        }
+
+        function toggleVoiceInput() {
+            if (!recognition) {
+                alert("Voice input not supported in this browser.");
+                return;
+            }
+            const btn = document.getElementById('micBtn');
+            if (btn.classList.contains('text-red-500')) {
+                recognition.stop();
+                btn.classList.remove('text-red-500', 'animate-pulse');
+            } else {
+                recognition.lang = CONFIG.language === 'Urdu' || CONFIG.language === 'Roman Urdu' ? 'ur-PK' : 'en-US';
+                recognition.start();
+                btn.classList.add('text-red-500', 'animate-pulse');
+            }
+        }
+
+        function speakText(text) {
+            window.speechSynthesis.cancel(); // Stop previous
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // Basic Language detection for voice
+            if(CONFIG.language === 'Urdu' || /[\u0600-\u06FF]/.test(text)) {
+                utterance.lang = 'ur-PK'; // Urdu Voice
+            } else if (CONFIG.language === 'Hindi') {
+                utterance.lang = 'hi-IN';
+            } else {
+                utterance.lang = 'en-US';
+            }
+            
+            utterance.pitch = 0.9; // Slightly lower for robotic feel
+            utterance.rate = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- CORE LOGIC ---
+        function startNewChat() {
+            currentChatId = Date.now();
+            CONFIG.chats.unshift({ id: currentChatId, title: 'New Protocol', messages: [] });
+            saveData();
+            renderHistory();
+            document.getElementById('chatContainer').innerHTML = '';
+            document.getElementById('sidebar').classList.remove('open'); // Close on mobile
+            
+            // Add initial system greeting
+             const welcomeHTML = `
+                <div class="flex gap-4 max-w-3xl mx-auto mt-10 opacity-80">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-nexa-accent to-nexa-purple flex items-center justify-center shadow-[0_0_15px_rgba(189,0,255,0.5)]">
+                        <i class="fa-solid fa-robot text-black"></i>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="font-sci text-nexa-accent text-sm">NEXA OS</div>
+                        <div class="text-gray-300">System Ready. Language Protocol: ${CONFIG.language}</div>
+                    </div>
+                </div>`;
+            document.getElementById('chatContainer').innerHTML = welcomeHTML;
+        }
+
+        async function sendMessage() {
+            if (isProcessing) return;
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            if (!CONFIG.apiKey) {
+                alert("Please enter OpenRouter API Key in Settings.");
+                toggleSettings();
+                return;
+            }
+
+            if (!currentChatId) startNewChat();
+
+            // Clear Input
+            input.value = '';
+            input.style.height = '48px';
+
+            // Render User Message
+            appendMessage('user', text);
+            saveMessage('user', text);
+
+            // Prepare API Context
+            isProcessing = true;
+            document.getElementById('sendBtn').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+            // Construct System Prompt based on Language Settings
+            let langInstruction = "";
+            if(CONFIG.language === "Urdu") langInstruction = "Reply in pure Urdu (Nastaliq script).";
+            else if (CONFIG.language === "Roman Urdu") langInstruction = "Reply in Roman Urdu (Urdu written in English script).";
+            else if (CONFIG.language === "Hindi") langInstruction = "Reply in Hindi.";
+
+            const messagesPayload = [
+                { role: "system", content: `${CONFIG.systemPrompt} ${langInstruction}` },
+                ...getChatHistoryForAPI()
+            ];
+
+            // AI Placeholder
+            const aiMsgId = 'ai-' + Date.now();
+            appendMessage('assistant', '', aiMsgId);
+            const aiContentDiv = document.getElementById(aiMsgId).querySelector('.content');
+            aiContentDiv.classList.add('typing-cursor');
+
+            try {
+                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method:            animation: slideUp 0.3s ease-out;
         }
         
         @keyframes slideUp {
