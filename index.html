@@ -3,38 +3,504 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal AI Chat Interface</title>
+    <title>NEXA - Universal AI Chat</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        * { font-family: 'Inter', sans-serif; }
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
-        .chat-message { animation: slideIn 0.3s ease-out; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .typing-indicator span { animation: blink 1.4s infinite; }
-        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes blink { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
-        .futuristic-border { box-shadow: 0 0 20px rgba(102, 126, 234, 0.5), inset 0 0 20px rgba(102, 126, 234, 0.1); }
-        .glow-button { box-shadow: 0 0 15px rgba(102, 126, 234, 0.6); transition: all 0.3s; }
-        .glow-button:hover { box-shadow: 0 0 25px rgba(102, 126, 234, 0.9); transform: translateY(-2px); }
-        .sidebar { transition: transform 0.3s ease; }
-        @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } }
-        .pulse-ring { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .gradient-text { background: linear-gradient(90deg, #667eea, #764ba2, #f093fb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .ai-thinking { background: linear-gradient(90deg, #667eea, #764ba2, #667eea); background-size: 200% 100%; animation: shimmer 2s infinite; }
-        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            font-family: 'Poppins', sans-serif; 
+        }
+        
+        body { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        
+        .glow {
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .chat-message {
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .typing-dots span {
+            animation: blink 1.4s infinite;
+            display: inline-block;
+        }
+        
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes blink {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+        
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .gradient-text {
+            background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 280px;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .sidebar.active {
+            transform: translateX(0);
+        }
+        
+        @media (min-width: 768px) {
+            .sidebar {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 280px;
+            }
+        }
+        
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+        
+        .overlay.active {
+            display: block;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.7);
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        input, textarea, select {
+            outline: none !important;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            border-color: rgba(102, 126, 234, 0.8) !important;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2) !important;
+        }
+        
+        .btn {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
     </style>
 </head>
-<body class="h-screen overflow-hidden">
-    
-    <!-- Main Container -->
-    <div class="flex h-full">
+<body>
+
+    <!-- Overlay for mobile sidebar -->
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar glass" id="sidebar">
+        <div class="p-6 border-b border-white/20">
+            <h1 class="text-3xl font-bold text-white gradient-text">NEXA</h1>
+            <p class="text-white/70 text-sm mt-1">Universal AI Assistant</p>
+        </div>
         
-        <!-- Sidebar -->
-        <div id="sidebar" class="sidebar glass w-80 h-full flex flex-col border-r border-white/20 z-20">
+        <div class="p-4">
+            <button onclick="newChat()" class="btn w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold glow">
+                ➕ New Chat
+            </button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto px-4 pb-4" style="max-height: calc(100vh - 250px);">
+            <h3 class="text-white/80 text-sm font-semibold mb-3">Chat History</h3>
+            <div id="chatHistory" class="space-y-2"></div>
+        </div>
+        
+        <div class="p-4 border-t border-white/20">
+            <button onclick="openSettings()" class="btn w-full glass text-white py-3 rounded-xl font-semibold hover:bg-white/20">
+                ⚙️ Settings
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content min-h-screen flex flex-col">
+        
+        <!-- Header -->
+        <div class="glass border-b border-white/20 p-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <button onclick="toggleSidebar()" class="md:hidden text-white text-2xl">
+                    ☰
+                </button>
+                <div class="flex items-center space-x-2">
+                    <div class="w-3 h-3 bg-green-400 rounded-full pulse"></div>
+                    <span class="text-white font-semibold text-sm md:text-base">NEXA Active</span>
+                </div>
+            </div>
+            <div class="text-white/70 text-xs md:text-sm" id="currentModel">GPT-4</div>
+        </div>
+        
+        <!-- Chat Container -->
+        <div id="chatContainer" class="flex-1 overflow-y-auto p-4 md:p-6">
+            <div class="max-w-4xl mx-auto">
+                <div class="text-center py-10 md:py-20">
+                    <div class="text-5xl md:text-7xl mb-4">🤖</div>
+                    <h2 class="text-2xl md:text-4xl font-bold text-white mb-2">Welcome to NEXA</h2>
+                    <p class="text-white/70 text-sm md:text-base">Your Universal AI Assistant - Ask Anything!</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Input Area -->
+        <div class="glass border-t border-white/20 p-4">
+            <div class="max-w-4xl mx-auto flex gap-2 md:gap-4">
+                <textarea 
+                    id="messageInput" 
+                    placeholder="Type your message here..." 
+                    class="flex-1 glass text-white placeholder-white/50 rounded-xl p-3 md:p-4 resize-none text-sm md:text-base"
+                    rows="1"
+                    style="min-height: 50px; max-height: 150px;"
+                ></textarea>
+                <button 
+                    onclick="sendMessage()" 
+                    class="btn bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 md:px-8 rounded-xl font-semibold glow text-sm md:text-base"
+                >
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="glass rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" style="margin: auto;">
+            <div class="p-6 md:p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl md:text-3xl font-bold text-white gradient-text">⚙️ Settings</h2>
+                    <button onclick="closeSettings()" class="text-white/60 hover:text-white text-3xl">&times;</button>
+                </div>
+                
+                <!-- API Keys -->
+                <div class="mb-6">
+                    <h3 class="text-lg md:text-xl font-semibold text-white mb-4">🔑 API Keys</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-white/80 block mb-2 text-sm">OpenAI API Key</label>
+                            <input type="password" id="openaiKey" placeholder="sk-..." class="w-full glass text-white placeholder-white/50 rounded-lg p-3 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-white/80 block mb-2 text-sm">Anthropic (Claude) API Key</label>
+                            <input type="password" id="anthropicKey" placeholder="sk-ant-..." class="w-full glass text-white placeholder-white/50 rounded-lg p-3 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-white/80 block mb-2 text-sm">Google Gemini API Key</label>
+                            <input type="password" id="geminiKey" placeholder="AIza..." class="w-full glass text-white placeholder-white/50 rounded-lg p-3 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-white/80 block mb-2 text-sm">OpenRouter API Key</label>
+                            <input type="password" id="openrouterKey" placeholder="sk-or-..." class="w-full glass text-white placeholder-white/50 rounded-lg p-3 text-sm">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Provider Selection -->
+                <div class="mb-6">
+                    <h3 class="text-lg md:text-xl font-semibold text-white mb-4">🤖 AI Provider</h3>
+                    <select id="providerSelect" onchange="updateModels()" class="w-full glass text-white rounded-lg p-3 text-sm">
+                        <option value="openai">OpenAI (GPT-4, GPT-3.5)</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                        <option value="google">Google (Gemini)</option>
+                        <option value="openrouter">OpenRouter (All Models)</option>
+                    </select>
+                </div>
+                
+                <!-- Model Selection -->
+                <div class="mb-6">
+                    <h3 class="text-lg md:text-xl font-semibold text-white mb-4">📊 Model</h3>
+                    <select id="modelSelect" class="w-full glass text-white rounded-lg p-3 text-sm">
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    </select>
+                </div>
+                
+                <!-- Language -->
+                <div class="mb-6">
+                    <h3 class="text-lg md:text-xl font-semibold text-white mb-4">🌍 Language</h3>
+                    <select id="languageSelect" class="w-full glass text-white rounded-lg p-3 text-sm">
+                        <option value="english">English</option>
+                        <option value="urdu">اردو (Urdu)</option>
+                        <option value="roman_urdu">Roman Urdu</option>
+                        <option value="hindi">हिंदी (Hindi)</option>
+                        <option value="arabic">العربية (Arabic)</option>
+                        <option value="spanish">Español</option>
+                        <option value="french">Français</option>
+                    </select>
+                </div>
+                
+                <!-- Voice Settings -->
+                <div class="mb-6">
+                    <h3 class="text-lg md:text-xl font-semibold text-white mb-4">🔊 Voice</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label class="text-white/80 text-sm">Enable Text-to-Speech</label>
+                            <input type="checkbox" id="ttsEnabled" checked class="w-5 h-5">
+                        </div>
+                        <div>
+                            <label class="text-white/80 block mb-2 text-sm">Voice Speed: <span id="speedValue">1.0</span>x</label>
+                            <input type="range" id="voiceSpeed" min="0.5" max="2" step="0.1" value="1" class="w-full">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Multi-AI Mode -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between">
+                        <label class="text-white/80 text-sm md:text-base">🔍 Multi-AI Comparison Mode</label>
+                        <input type="checkbox" id="multiAIMode" class="w-5 h-5">
+                    </div>
+                </div>
+                
+                <!-- Save Button -->
+                <button onclick="saveSettings()" class="btn w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 rounded-xl font-bold glow">
+                    💾 Save Settings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global Variables
+        let currentChatId = null;
+        let chats = {};
+        let settings = {
+            ttsEnabled: true,
+            voiceSpeed: 1.0,
+            language: 'english',
+            provider: 'openai',
+            model: 'gpt-4'
+        };
+
+        // Initialize
+        function init() {
+            loadFromStorage();
+            renderChatHistory();
+            setupEventListeners();
+        }
+
+        // Load data from localStorage
+        function loadFromStorage() {
+            const savedChats = localStorage.getItem('nexa_chats');
+            const savedSettings = localStorage.getItem('nexa_settings');
+            
+            if (savedChats) {
+                chats = JSON.parse(savedChats);
+            }
+            
+            if (savedSettings) {
+                settings = JSON.parse(savedSettings);
+                applySettings();
+            }
+        }
+
+        // Save to localStorage
+        function saveToStorage() {
+            localStorage.setItem('nexa_chats', JSON.stringify(chats));
+            localStorage.setItem('nexa_settings', JSON.stringify(settings));
+        }
+
+        // Apply settings to UI
+        function applySettings() {
+            if (settings.openaiKey) document.getElementById('openaiKey').value = settings.openaiKey;
+            if (settings.anthropicKey) document.getElementById('anthropicKey').value = settings.anthropicKey;
+            if (settings.geminiKey) document.getElementById('geminiKey').value = settings.geminiKey;
+            if (settings.openrouterKey) document.getElementById('openrouterKey').value = settings.openrouterKey;
+            if (settings.provider) document.getElementById('providerSelect').value = settings.provider;
+            if (settings.model) document.getElementById('modelSelect').value = settings.model;
+            if (settings.language) document.getElementById('languageSelect').value = settings.language;
+            if (settings.ttsEnabled !== undefined) document.getElementById('ttsEnabled').checked = settings.ttsEnabled;
+            if (settings.voiceSpeed) {
+                document.getElementById('voiceSpeed').value = settings.voiceSpeed;
+                document.getElementById('speedValue').textContent = settings.voiceSpeed;
+            }
+            if (settings.multiAIMode !== undefined) document.getElementById('multiAIMode').checked = settings.multiAIMode;
+            
+            document.getElementById('currentModel').textContent = settings.model || 'GPT-4';
+            updateModels();
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Enter to send
+            document.getElementById('messageInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // Auto-resize textarea
+            document.getElementById('messageInput').addEventListener('input', (e) => {
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
+            });
+
+            // Voice speed slider
+            document.getElementById('voiceSpeed').addEventListener('input', (e) => {
+                document.getElementById('speedValue').textContent = e.target.value;
+            });
+        }
+
+        // Toggle sidebar (mobile)
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        // New Chat
+        function newChat() {
+            const chatId = 'chat_' + Date.now();
+            chats[chatId] = {
+                id: chatId,
+                title: 'New Chat',
+                messages: [],
+                timestamp: Date.now()
+            };
+            currentChatId = chatId;
+            saveToStorage();
+            renderChatHistory();
+            clearChatDisplay();
+            toggleSidebar(); // Close sidebar on mobile
+        }
+
+        // Clear chat display
+        function clearChatDisplay() {
+            document.getElementById('chatContainer').innerHTML = `
+                <div class="max-w-4xl mx-auto">
+                    <div class="text-center py-10 md:py-20">
+                        <div class="text-5xl md:text-7xl mb-4">🤖</div>
+                        <h2 class="text-2xl md:text-4xl font-bold text-white mb-2">New Conversation</h2>
+                        <p class="text-white/70 text-sm md:text-base">Ask me anything!</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render chat history
+        function renderChatHistory() {
+            const historyDiv = document.getElementById('chatHistory');
+            historyDiv.innerHTML = '';
+            
+            const sortedChats = Object.values(chats).sort((a, b) => b.timestamp - a.timestamp);
+            
+            if (sortedChats.length === 0) {
+                historyDiv.innerHTML = '<p class="text-white/50 text-sm text-center">No chats yet</p>';
+                return;
+            }
+            
+            sortedChats.forEach(chat => {
+                const div = document.createElement('div');
+                div.className = `glass rounded-lg p-3 cursor-pointer hover:bg-white/20 transition ${chat.id === currentChatId ? 'bg-white/20' : ''}`;
+                div.onclick = () => loadChat(chat.id);
+                div.innerHTML = `
+                    <div class="text-white font-medium text-sm truncate">${chat.title}</div>
+                    <div class="text-white/50 text-xs mt-1">${new Date(chat.timestamp).toLocaleDateString()}</div>
+                `;
+                historyDiv.appendChild(div);
+            });
+        }
+
+        // Load chat
+        function loadChat(chatId) {
+            currentChatId = chatId;
+            renderChatHistory();
+            displayMessages();
+            toggleSidebar(); // Close sidebar on mobile
+        }
+
+              <div id="sidebar" class="sidebar glass w-80 h-full flex flex-col border-r border-white/20 z-20">
             <!-- Header -->
             <div class="p-6 border-b border-white/20">
                 <h1 class="text-2xl font-bold text-white gradient-text">Universal AI Chat</h1>
