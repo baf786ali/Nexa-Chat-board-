@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal AI Chat Interface</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .chat-message { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .typing-indicator span { animation: blink 1.4s infinite; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
+        .futuristic-border { box-shadow: 0 0 20px rgba(102, 126, 234, 0.5), inset 0 0 20px rgba(102, 126, 234, 0.1); }
+        .glow-button { box-shadow: 0 0 15px rgba(102, 126, 234, 0.6); transition: all 0.3s; }
+        .glow-button:hover { box-shadow: 0 0 25px rgba(102, 126, 234, 0.9); transform: translateY(-2px); }
+        .sidebar { transition: transform 0.3s ease; }
+        @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } }
+        .pulse-ring { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .gradient-text { background: linear-gradient(90deg, #667eea, #764ba2, #f093fb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .ai-thinking { background: linear-gradient(90deg, #667eea, #764ba2, #667eea); background-size: 200% 100%; animation: shimmer 2s infinite; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
+</head>
+<body class="h-screen overflow-hidden">
+    
+    <!-- Main Container -->
+    <div class="flex h-full">
+        
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar glass w-80 h-full flex flex-col border-r border-white/20 z-20">
+            <!-- Header -->
+            <div class="p-6 border-b border-white/20">
+                <h1 class="text-2xl font-bold text-white gradient-text">Universal AI Chat</h1>
+                <p class="text-white/60 text-sm mt-1">Multi-AI Assistant</p>
+            </div>
+            
+            <!-- New Chat Button -->
+            <div class="p-4">
+                <button onclick="createNewChat()" class="glow-button w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600">
+                    + New Chat
+                </button>
+            </div>
+            
+            <!-- Chat History -->
+            <div class="flex-1 overflow-y-auto p-4">
+                <h3 class="text-white/80 text-sm font-semibold mb-3">Chat History</h3>
+                <div id="chatHistory" class="space-y-2"></div>
+            </div>
+            
+            <!-- Settings Button -->
+            <div class="p-4 border-t border-white/20">
+                <button onclick="openSettings()" class="w-full glass text-white py-3 rounded-lg font-semibold hover:bg-white/20 transition">
+                    ⚙️ Settings
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Chat Area -->
+        <div class="flex-1 flex flex-col">
+            
+            <!-- Header Bar -->
+            <div class="glass border-b border-white/20 p-4 flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <button onclick="toggleSidebar()" class="md:hidden text-white text-2xl">☰</button>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-3 h-3 bg-green-400 rounded-full pulse-ring"></div>
+                        <span class="text-white font-semibold">AI Assistant Active</span>
+                    </div>
+                </div>
+                <div class="text-white/60 text-sm">
+                    <span id="currentModel">GPT-4</span>
+                </div>
+            </div>
+            
+            <!-- Chat Messages -->
+            <div id="chatContainer" class="flex-1 overflow-y-auto p-6 space-y-4">
+                <!-- Welcome Message -->
+                <div class="text-center py-20">
+                    <div class="text-6xl mb-4">🤖</div>
+                    <h2 class="text-3xl font-bold text-white mb-2">Welcome to Universal AI Chat</h2>
+                    <p class="text-white/60">Ask me anything in any language!</p>
+                </div>
+            </div>
+            
+            <!-- Input Area -->
+            <div class="glass border-t border-white/20 p-6">
+                <div class="flex space-x-4">
+                    <textarea id="messageInput" placeholder="Type your message here..." class="flex-1 glass text-white placeholder-white/50 rounded-lg p-4 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500" rows="2"></textarea>
+                    <button onclick="sendMessage()" class="glow-button bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600">
+                        Send 🚀
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-30 flex items-center justify-center p-4">
+        <div class="glass futuristic-border rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-white gradient-text">⚙️ Settings</h2>
+                    <button onclick="closeSettings()" class="text-white/60 hover:text-white text-3xl">&times;</button>
+                </div>
+                
+                <!-- API Keys Section -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-white mb-4">🔑 AI Provider API Keys</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-white/80 block mb-2">OpenAI API Key</label>
+                            <input type="password" id="openaiKey" placeholder="sk-..." class="w-full glass text-white placeholder-white/50 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        </div>
+                        <div>
+                            <label class="text-white/80 block mb-2">Anthropic (Claude) API Key</label>
+                            <input type="password" id="anthropicKey" placeholder="sk-ant-..." class="w-full glass text-white placeholder-white/50 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        </div>
+                        <div>
+                            <label class="text-white/80 block mb-2">Google Gemini API Key</label>
+                            <input type="password" id="geminiKey" placeholder="AIza..." class="w-full glass text-white placeholder-white/50 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        </div>
+                        <div>
+                            <label class="text-white/80 block mb-2">Cohere API Key</label>
+                            <input type="password" id="cohereKey" placeholder="..." class="w-full glass text-white placeholder-white/50 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        </div>
+                        <div>
+                            <label class="text-white/80 block mb-2">OpenRouter API Key (For Multiple Models)</label>
+                            <input type="password" id="openrouterKey" placeholder="sk-or-..." class="w-full glass text-white placeholder-white/50 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Model Selection -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-white mb-4">🤖 AI Model Selection</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-white/80 block mb-2">Primary Provider</label>
+                            <select id="primaryProvider" onchange="updateModelOptions()" class="w-full glass text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <option value="openai">OpenAI (GPT-4, GPT-3.5)</option>
+                                <option value="anthropic">Anthropic (Claude)</option>
+                                <option value="google">Google (Gemini)</option>
+                                <option value="cohere">Cohere</option>
+                                <option value="openrouter">OpenRouter (All Models)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-white/80 block mb-2">Model Name</label>
+                            <select id="modelName" class="w-full glass text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <option value="gpt-4">GPT-4</option>
+                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Language Selection -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-white mb-4">🌍 Language Preference</h3>
+                    <select id="languageSelect" class="w-full glass text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="english">English</option>
+                        <option value="urdu">اردو (Urdu)</option>
+                        <option value="roman_urdu">Roman Urdu</option>
+                        <option value="hindi">हिंदी (Hindi)</option>
+                        <option value="arabic">العربية (Arabic)</option>
+                        <option value="spanish">Español (Spanish)</option>
+                        <option value="french">Français (French)</option>
+                        <option value="german">Deutsch (German)</option>
+                        <option value="chinese">中文 (Chinese)</option>
+                        <option value="japanese">日本語 (Japanese)</option>
+                    </select>
+                </div>
+                
+                <!-- Voice Settings -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-white mb-4">🔊 Voice Settings</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label class="text-white/80">Enable Text-to-Speech</label>
+                            <input type="checkbox" id="ttsEnabled" checked class="w-6 h-6">
+                        </div>
+                        <div>
+                            <label class="text-white/80 block mb-2">Voice Speed</label>
+                            <input type="range" id="voiceSpeed" min="0.5" max="2" step="0.1" value="1" class="w-full">
+                            <span class="text-white/60 text-sm">Speed: <span id="speedValue">1.0</span>x</span>
+                        </div>
+                        <div>
+                            <label class="text-white/80 block mb-2">Voice Pitch</label>
+                            <input type="range" id="voicePitch" min="0.5" max="2" step="0.1" value="1" class="w-full">
+                            <span class="text-white/60 text-sm">Pitch: <span id="pitchValue">1.0</span></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Settings -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-white mb-4">⚡ Advanced Settings</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-white/80 block mb-2">Max Context Length (Unlimited Window)</label>
+                            <input type="number" id="maxContext" value="100000" class="w-full glass text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <p class="text-white/50 text-sm mt-1">Higher values = more memory</p>
+                        </div>
+                        <div>
+                            <label class="text-white/80 block mb-2">Temperature (Creativity)</label>
+                            <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7" class="w-full">
+                            <span class="text-white/60 text-sm">Value: <span id="tempValue">0.7</span></span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label class="text-white/80">Multi-AI Comparison Mode</label>
+                            <input type="checkbox" id="multiAIMode" class="w-6 h-6">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Save Button -->
+                <button onclick="saveSettings()" class="glow-button w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 rounded-lg font-bold text-lg hover:from-green-600 hover:to-blue-600">
+                    💾 Save Settings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Initialize
+        let currentChatId = null;
+        let chats = {};
+        let settings = {};
+        let isTyping = false;
+        
+        // Load data from LocalStorage
+        function loadData() {
+            const savedChats = localStorage.getItem('chats');
+            const savedSettings = localStorage.getItem('settings');
+            
+            if (savedChats) chats = JSON.parse(savedChats);
+            if (savedSettings) {
+                settings = JSON.parse(savedSettings);
+                loadSettingsToUI();
+            }
+            
+            renderChatHistory();
+        }
+        
+        // Save data to LocalStorage
+        function saveData() {
+            localStorage.setItem('chats', JSON.stringify(chats));
+            localStorage.setItem('settings', JSON.stringify(settings));
+        }
+        
+        // Create new chat
+        function createNewChat() {
+            const chatId = 'chat_' + Date.now();
+            chats[chatId] = {
+                id: chatId,
+                title: 'New Chat',
+                messages: [],
+                timestamp: Date.now()
+            };
+            currentChatId = chatId;
+            saveData();
+            renderChatHistory();
+            clearChat();
+        }
+        
+        // Render chat history
+        function renderChatHistory() {
+            const historyDiv = document.getElementById('chatHistory');
+            historyDiv.innerHTML = '';
+            
+            const sortedChats = Object.values(chats).sort((a, b) => b.timestamp - a.timestamp);
+            
+            sortedChats.forEach(chat => {
+                const div = document.createElement('div');
+                div.className = `glass rounded-lg p-3 cursor-pointer hover:bg-white/20 transition ${chat.id === currentChatId ? 'bg-white/20' : ''}`;
+                div.onclick = () => loadChat(chat.id);
+                div.innerHTML = `
+                    <div class="text-white font-semibold truncate">${chat.title}</div>
+                    <div class="text-white/50 text-xs">${new Date(chat.timestamp).toLocaleDateString()}</div>
+                `;
+                historyDiv.appendChild(div);
+            });
+        }
+        
+        // Load specific chat
+        function loadChat(chatId) {
+            currentChatId = chatId;
+            renderChatHistory();
+            displayMessages();
+        }
+        
+        // Clear chat display
+        function clearChat() {
+            document.getElementById('chatContainer').innerHTML = `
+                <div class="text-center py-20">
+                    <div class="text-6xl mb-4">🤖</div>
+                    <h2 class="text-3xl font-bold text-white mb-2">New Conversation</h2>
+                    <p class="text-white/60">Ask me anything in any language!</p>
+                </div>
+            `;
+        }
+        
+        // Display messages
+        function displayMessages() {
+            const container = document.getElementById('chatContainer');
+            container.innerHTML = '';
+            
+            if (!currentChatId || !chats[currentChatId]) return;
+            
+            chats[currentChatId].messages.forEach(msg => {
+                addMessageToUI(msg.role, msg.content);
+            });
+        }
+        
+        // Add message to UI
+        function addMessageToUI(role, content, showSpeaker = true) {
+            const container = document.getElementById('chatContainer');
+            const div = document.createElement('div');
+            div.className = 'chat-message';
+            
+            const isUser = role === 'user';
+            
+            div.innerHTML = `
+                <div class="flex ${isUser ? 'justify-end' : 'justify-start'} mb-4">
+                    <div class="max-w-3xl ${isUser ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'glass'} rounded-2xl p-4 relative">
+                        ${!isUser && showSpeaker ? `
+                            <button onclick="speakText('${content.replace(/'/g, "\\'")}', this)" class="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-blue-600 glow-button text-sm">
+                                🔊
+                            </button>
+                        ` : ''}
+                        <div class="flex items-start space-x-3">
+                            <div class="text-2xl">${isUser ? '👤' : '🤖'}</div>
+                            <div class="flex-1">
+                                <div class="text-white/80 text-sm font-semibold mb-1">${isUser ? 'You' : 'AI Assistant'}</div>
+                                <div class="text-white whitespace-pre-wrap">${content}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        // Send message
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message || isTyping) return;
+            
+            // Create chat if doesn't exist
+            if (!currentChatId) {
+                createNewChat();
+            }
+            
+            // Add user message
+            chats[currentChatId].messages.push({ role: 'user', content: message });
+            
+            // Update chat title if first message
+            if (chats[currentChatId].messages.length === 1) {
+                chats[currentChatId].title = message.substring(0, 50);
+            }
+            
+            input.value = '';
+            saveData();
+            renderChatHistory();
+            addMessageToUI('user', message);
+            
+            // Show typing indicator
+            showTypingIndicator();
+            isTyping = true;
+            
+            try {
+                // Get AI response
+                const response = await getAIResponse(message);
+                
+                // Remove typing indicator
+                hideTypingIndicator();
+                
+                // Add AI message
+                chats[currentChatId].messages.push({ role: 'assistant', content: response });
+                saveData();
+                addMessageToUI('assistant', response);
+                
+                isTyping = false;
+            } catch (error) {
+                hideTypingIndicator();
+                addMessageToUI('assistant', '❌ Error: ' + error.message);
+                isTyping = false;
+            }
+        }
+        
+        // Get AI Response
+        async function getAIResponse(message) {
+            const provider = settings.primaryProvider || 'openai';
+            const model = settings.modelName || 'gpt-4';
+            const language = settings.language || 'english';
+            const multiAI = settings.multiAIMode || false;
+            
+            // Language instruction
+            const languageInstruction = language !== 'english' ? `Please respond in ${language}.` : '';
+            
+            // Prepare messages with context
+            const contextMessages = chats[currentChatId].messages.slice(-20); // Last 20 messages for context
+            
+            // Multi-AI mode
+            if (multiAI) {
+                return await getMultiAIResponse(message, languageInstruction);
+            }
+            
+            // Single AI response
+            if (provider === 'openai') {
+                return await callOpenAI(contextMessages, languageInstruction);
+            } else if (provider === 'anthropic') {
+                return await callAnthropic(contextMessages, languageInstruction);
+            } else if (provider === 'google') {
+                return await callGemini(contextMessages, languageInstruction);
+            } else if (provider === 'openrouter') {
+                return await callOpenRouter(contextMessages, languageInstruction);
+            }
+            
+            return "Please configure API keys in settings.";
+        }
+        
+        // Call OpenAI API
+        async function callOpenAI(messages, langInstruction) {
+            const apiKey = settings.openaiKey;
+            if (!apiKey) throw new Error('OpenAI API key not configured');
+            
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: settings.modelName || 'gpt-4',
+                    messages: [
+                        { role: 'system', content: `You are a helpful AI assistant. ${langInstruction}` },
+                        ...messages
+                    ],
+                    temperature: settings.temperature || 0.7,
+                    max_tokens: settings.maxContext || 100000
+                })
+            });
+            
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            return data.choices[0].message.content;
+        }
+        
+        // Call Anthropic API
+        async function callAnthropic(messages, langInstruction) {
+            const apiKey = settings.anthropicKey;
+            if (!apiKey) throw new Error('Anthropic API key not configured');
+            
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: settings.modelName || 'claude-3-opus-20240229',
+                    messages: messages,
+                    system: `You are a helpful AI assistant. ${langInstruction}`,
+                    max_tokens: settings.maxContext || 100000
+                })
+            });
+            
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            return data.content[0].text;
+        }
+        
+        // Call Google Gemini API
+        async function callGemini(messages, langInstruction) {
+            const apiKey = settings.geminiKey;
+            if (!apiKey) throw new Error('Google Gemini API key not configured');
+            
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: `${langInstruction}\n\n${messages[messages.length - 1].content}`
+                        }]
+                    }]
+                })
+            });
+            
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            return data.candidates[0].content.parts[0].text;
+        }
+        
+        // Call OpenRouter API (supports multiple models)
+        async function callOpenRouter(messages, langInstruction) {
+            const apiKey = settings.openrouterKey;
+            if (!apiKey) throw new Error('OpenRouter API key not configured');
+            
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                    'HTTP-Referer': window.location.href,
+                    'X-Title': 'Universal AI Chat'
+                },
+                body: JSON.stringify({
+                    model: settings.modelName || 'openai/gpt-4',
+                    messages: [
+                        { role: 'system', content: `You are a helpful AI assistant. ${langInstruction}` },
+                        ...messages
+                    ]
+                })
+            });
+            
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            return data.choices[0].message.content;
+        }
+        
+        // Multi-AI comparison
+        async function getMultiAIResponse(message, langInstruction) {
+            let responses = "🔍 **Multi-AI Comparison Mode**\n\n";
+            
+            const providers = [];
+            if (settings.openaiKey) providers.push({ name: 'OpenAI GPT-4', fn: callOpenAI });
+            if (settings.anthropicKey) providers.push({ name: 'Claude', fn: callAnthropic });
+            if (settings.geminiKey) providers.push({ name: 'Gemini', fn: callGemini });
+            
+            for (const provider of providers) {
+                try {
+                    const resp = await provider.fn([{ role: 'user', content: message }], langInstruction);
+                    responses += `\n### ${provider.name}\n${resp}\n\n---\n`;
+                } catch (e) {
+                    responses += `\n### ${provider.name}\n❌ Error: ${e.message}\n\n---\n`;
+                }
+            }
+            
+            return responses;
+        }
+        
+        // Text-to-Speech
+        function speakText(text, button) {
+            if (!settings.ttsEnabled) return;
+            
+            // Cancel previous speech
+            window.speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = settings.voiceSpeed || 1;
+            utterance.pitch = settings.voicePitch || 1;
+            
+            // Change button while speaking
+            button.innerHTML = '⏸️';
+            button.onclick = () => window.speechSynthesis.cancel();
+            
+            utterance.onend = () => {
+                button.innerHTML = '🔊';
+                button.onclick = () => speakText(text, button);
+            };
+            
+            window.speechSynthesis.speak(utterance);
+        }
+        
+        // Typing indicator
+        function showTypingIndicator() {
+            const container = document.getElementById('chatContainer');
+            const div = document.createElement('div');
+            div.id = 'typingIndicator';
+            div.className = 'typing-indicator flex justify-start mb-4';
+            div.innerHTML = `
+                <div class="glass rounded-2xl p-4 flex items-center space-x-2">
+                    <div class="text-2xl">🤖</div>
+                    <div class="flex space-x-1">
+                        <span class="w-2 h-2 bg-white rounded-full"></span>
+                        <span class="w-2 h-2 bg-white rounded-full"></span>
+                        <span class="w-2 h-2 bg-white rounded-full"></span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+        
+        // Settings
+        function openSettings() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+        
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+        
+        function saveSettings() {
+            settings = {
+                openaiKey: document.getElementById('openaiKey').value,
+                anthropicKey: document.getElementById('anthropicKey').value,
+                geminiKey: document.getElementById('geminiKey').value,
+                cohereKey: document.getElementById('cohereKey').value,
+                openrouterKey: document.getElementById('openrouterKey').value,
+                primaryProvider: document.getElementById('primaryProvider').value,
+                modelName: document.getElementById('modelName').value,
+                language: document.getElementById('languageSelect').value,
+                ttsEnabled: document.getElementById('ttsEnabled').checked,
+                voiceSpeed: parseFloat(document.getElementById('voiceSpeed').value),
+                voicePitch: parseFloat(document.getElementById('voicePitch').value),
+                maxContext: parseInt(document.getElementById('maxContext').value),
+                temperature: parseFloat(document.getElementById('temperature').value),
+                multiAIMode: document.getElementById('multiAIMode').checked
+            };
+            
+            saveData();
+            document.getElementById('currentModel').textContent = settings.modelName || 'GPT-4';
+            closeSettings();
+            alert('✅ Settings saved successfully!');
+        }
+        
+        function loadSettingsToUI() {
+            if (settings.openaiKey) document.getElementById('openaiKey').value = settings.openaiKey;
+            if (settings.anthropicKey) document.getElementById('anthropicKey').value = settings.anthropicKey;
+            if (settings.geminiKey) document.getElementById('geminiKey').value = settings.geminiKey;
+            if (settings.cohereKey) document.getElementById('cohereKey').value = settings.cohereKey;
+            if (settings.openrouterKey) document.getElementById('openrouterKey').value = settings.openrouterKey;
+            if (settings.primaryProvider) document.getElementById('primaryProvider').value = settings.primaryProvider;
+            if (settings.modelName) document.getElementById('modelName').value = settings.modelName;
+            if (settings.language) document.getElementById('languageSelect').value = settings.language;
+            if (settings.ttsEnabled !== undefined) document.getElementById('ttsEnabled').checked = settings.ttsEnabled;
+            if (settings.voiceSpeed) document.getElementById('voiceSpeed').value = settings.voiceSpeed;
+            if (settings.voicePitch) document.getElementById('voicePitch').value = settings.voicePitch;
+            if (settings.maxContext) document.getElementById('maxContext').value = settings.maxContext;
+            if (settings.temperature) document.getElementById('temperature').value = settings.temperature;
+            if (settings.multiAIMode !== undefined) document.getElementById('multiAIMode').checked = settings.multiAIMode;
+            
+            document.getElementById('speedValue').textContent = settings.voiceSpeed || 1;
+            document.getElementById('pitchValue').textContent = settings.voicePitch || 1;
+            document.getElementById('tempValue').textContent = settings.temperature || 0.7;
+            document.getElementById('currentModel').textContent = settings.modelName || 'GPT-4';
+        }
+        
+        function updateModelOptions() {
+            const provider = document.getElementById('primaryProvider').value;
+            const modelSelect = document.getElementById('modelName');
+            
+            const models = {
+                openai: [
+                    { value: 'gpt-4', label: 'GPT-4' },
+                    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' }
+                ],
+                anthropic: [
+                    { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
+                    { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' }
+                ],
+                google: [
+                    { value: 'gemini-pro', label: 'Gemini Pro' }
+                ],
+                openrouter: [
+                    { value: 'openai/gpt-4', label: 'GPT-4' },
+                    { value: 'anthropic/claude-3-opus', label: 'Claude 3 Opus' },
+                    { value: 'google/gemini-pro', label: 'Gemini Pro' },
+                    { value: 'meta-llama/llama-3-70b', label: 'Llama 3 70B' }
+                ]
+            };
+            
+            modelSelect.innerHTML = '';
+            models[provider].forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.value;
+                option.textContent = model.label;
+                modelSelect.appendChild(option);
+            });
+        }
+        
+        // Sidebar toggle for mobile
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+        
+        // Enter to send
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Range sliders
+        document.getElementById('voiceSpeed').addEventListener('input', (e) => {
+            document.getElementById('speedValue').textContent = e.target.value;
+        });
+        document.getElementById('voicePitch').addEventListener('input', (e) => {
+            document.getElementById('pitchValue').textContent = e.target.value;
+        });
+        document.getElementById('temperature').addEventListener('input', (e) => {
+            document.getElementById('tempValue').textContent = e.target.value;
+        });
+        
+        // Initialize on load
+        loadData();
+    </script>
+</body>
+</html>
